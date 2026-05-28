@@ -13,6 +13,8 @@
  * L'utente è a metà tunnel (z = -12.5 m), guarda verso -Z.
  */
 
+import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
+
 /* ============================================================
    MARCO: TunnelScene — Setup completo scene Three.js + WebXR
    ============================================================ */
@@ -332,3 +334,5 @@ class TunnelScene {
     }
   }
 }
+
+export { TunnelScene };

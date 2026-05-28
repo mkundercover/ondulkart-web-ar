@@ -1,5 +1,8 @@
-/* ── Import ES module: HandTracker (MediaPipe wrapper) ── */
+/* ── Import ES modules ── */
+import { TunnelScene } from './marco/scene.js';
+import { ButterflySystem } from './marco/butterflies.js';
 import { HandTracker } from './sandrx/handTracking.js';
+import { SVGOverlay } from './sandrx/svgOverlay.js';
 
 /**
  * WEB AR APP — Controller principale

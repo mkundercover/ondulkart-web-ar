@@ -311,3 +311,5 @@ class SVGOverlay {
     this.overlay.innerHTML = '';
   }
 }
+
+export { SVGOverlay };

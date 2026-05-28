@@ -14,6 +14,8 @@
  *   Z:  0.00 (ingresso)   … -25.0 (fondo)
  */
 
+import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
+
 /* ============================================================
    MARCO: ButterflySystem — Gestione farfalle
    ============================================================ */
@@ -265,3 +267,5 @@ class ButterflySystem {
     }
   }
 }
+
+export { ButterflySystem };
