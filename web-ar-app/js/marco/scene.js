@@ -40,15 +40,15 @@ class TunnelScene {
     this.camera.lookAt(0, this.cameraHeight, -25);
 
     /* --- Renderer ---
-     * alpha: true  →  sfondo trasparente per vedere il feed AR
-     * clearAlpha: 0 → nessun colore di pulizia, tutto trasparente */
+     * Su desktop/fallback: sfondo scuro opaco (#0a0a0a) per vedere il tunnel.
+     * Su AR (WebXR): diventa trasparente per vedere il feed video. */
     this.renderer = new THREE.WebGLRenderer({
       alpha: true,
       antialias: true,
     });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setClearColor(0x000000, 0); // completamente trasparente
+    this.renderer.setClearColor(0x0a0a0a, 1); // sfondo scuro opaco (fallback desktop)
     this.renderer.xr.enabled = true;
     document.getElementById('ar-container').appendChild(this.renderer.domElement);
 
@@ -213,43 +213,37 @@ class TunnelScene {
   }
 
   /* ----------------------------------------------------------
-   *  MARCO: Avvio sessione AR
+   *  MARCO: Avvia sessione AR
    *
-   *  Richiede 'immersive-ar' a WebXR.
-   *  Se non disponibile, attiva fallback desktop con
-   *  simulazione del movimento destra→sinistra.
+   *  Su WebXR (iOS Safari): avvia沉浸式 AR con sfondo video.
+   *  Desktop/fallback: il renderer resta opaco con sfondo #0a0a0a.
+   *
+   *  Quando la sessione AR parte, il renderer diventa trasparente.
    * ---------------------------------------------------------- */
   async initAR() {
-    // Verifica supporto WebXR
     if (navigator.xr) {
       try {
         const supported = await navigator.xr.isSessionSupported('immersive-ar');
         if (supported) {
           this.renderer.xr.addEventListener('sessionstart', () => {
             this.isAR = true;
+            // AR attivo → renderer trasparente per vedere video
+            this.renderer.setClearColor(0x000000, 0);
+            console.log('[Marco] Sessione AR attiva — renderer trasparente');
           });
-          // La sessione sarà avviata dall'utente (click/touch)
-          // o al caricamento se possibile
-          return; // pronto, aspetta trigger utente
+          return;
         }
       } catch (e) {
         console.warn('[Marco] WebXR AR non supportato:', e);
       }
     }
 
-    // WebXR non disponibile — rimani in attesa che l'utente
-    // clicki per provare comunque (oppure fallback auto dopo 3s)
-    console.log('[Marco] WebXR AR non disponibile su questo browser');
+    // Fallback desktop: nessun AR, sfondo scuro opaco
     this.isAR = false;
-
-    // Dopo 2 secondi mostra il fallback automaticamente
-    // (così non resta bloccato su loading)
-    setTimeout(() => {
-      if (!this.isAR && !this.renderer.xr.isPresenting) {
-        document.getElementById('fallback-message').classList.add('visible');
-        this._enterFallbackMode();
-      }
-    }, 2000);
+    this.renderer.setClearColor(0x0a0a0a, 1);
+    console.log('[Marco] Fallback desktop — camera simulata');
+    document.getElementById('fallback-message').classList.add('visible');
+    this._enterFallbackMode();
   }
 
   /* ----------------------------------------------------------
