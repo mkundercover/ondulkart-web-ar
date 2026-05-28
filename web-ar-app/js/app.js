@@ -38,13 +38,11 @@ class ARApp {
       this.tunnelScene = new TunnelScene();
       this._startRenderLoop();
 
-      /* 2. Tenta WebXR AR subito (il tap START è user gesture!) */
-      let arStarted = await this.tunnelScene.startARSession();
+      /* 2. Attiva SEMPRE la camera per hand tracking + sfondo video */
+      await this._startCamera();
 
-      if (!arStarted) {
-        /* 3. Fallback: camera come sfondo */
-        await this._startCamera();
-      }
+      /* 3. Tenta WebXR AR (user gesture dal tap START) */
+      await this.tunnelScene.startARSession();
 
       /* 4. Farfalle */
       this.butterflySystem = new ButterflySystem(this.tunnelScene.scene);

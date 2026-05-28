@@ -91,16 +91,21 @@ class HandTracker {
 
       console.log('[Sandro] HandLandmarker caricato');
 
-      // 2. Crea elemento video
-      this.videoElement = document.createElement('video');
-      this.videoElement.setAttribute('playsinline', '');
-      this.videoElement.style.display = 'none'; // nascosto
-      document.body.appendChild(this.videoElement);
+      // 2. Usa il video element della camera principale (già attivo!)
+      // Se non esiste ancora, crealo — ma MEGLIO condividere lo stesso stream
+      this.videoElement = document.getElementById('camera-feed');
+      if (!this.videoElement || !this.videoElement.srcObject) {
+        // Fallback: crea video + camera propria
+        this.videoElement = document.createElement('video');
+        this.videoElement.setAttribute('playsinline', '');
+        this.videoElement.style.display = 'none';
+        document.body.appendChild(this.videoElement);
+        await this._startCamera();
+      } else {
+        console.log('[Sandro] Riutilizzo camera principale per hand tracking');
+      }
 
-      // 3. Avvia fotocamera (posteriore preferita per AR)
-      await this._startCamera();
-
-      // 4. Avvia loop detection
+      // 3. Avvia loop detection
       this._running = true;
       this._detectLoop();
 
