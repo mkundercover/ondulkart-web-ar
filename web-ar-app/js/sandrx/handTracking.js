@@ -56,7 +56,7 @@ class HandTracker {
 
       // 2. Carica il resolver e il modello HandsLandmarker
       const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
+        'https://unpkg.com/@mediapipe/tasks-vision@0.10.1/wasm'
       );
 
       // Prova GPU prima, poi fallback a CPU
