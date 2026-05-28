@@ -3,41 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" yes" />
   <title>AR Tunnel Experience</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
 
-  <!-- MARCO: Loading Screen -->
-  <div id="loading-screen">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">Initializing AR</div>
-    <div class="loading-sub">Loading models &amp; scene…</div>
-  </div>
-
-  <!-- SANDRO: Orientamento — "Metti il telefono dritto" -->
-  <div id="orientation-guide">
-    <div class="orient-phone-icon" id="orient-phone">📱</div>
-    <div class="orient-text" id="orient-instruction">
-      Tieni il telefono <span class="highlight">dritto</span><br>
-      verso il <span class="highlight">pavimento</span>
-    </div>
-    <div class="orient-bar-container">
-      <div class="orient-bar-fill" id="orient-bar"></div>
-    </div>
-    <div class="orient-ready" id="orient-ready">
-      <div class="orient-ready-text">✦ Orientamento corretto ✦</div>
-      <div class="orient-text">
-        Cerca il bottone <span class="correct-label">START</span> sul pavimento
-      </div>
-    </div>
-  </div>
-
-  <!-- MARCO: Three.js container (canvas injectato qui) -->
+  <!-- MARCO: Three.js container -->
   <div id="ar-container"></div>
 
-  <!-- SANDRO: Overlay SVG per Motion Graphics sopra la mano -->
+  <!-- SANDRO: Overlay SVG Motion Graphics -->
   <div id="svg-overlay"></div>
 
   <!-- SANDRO: Hand tracking status -->
@@ -46,22 +21,26 @@
     <span class="status-text" id="hand-status-text">No hand</span>
   </div>
 
-  <!-- Fallback message (se WebXR non disponibile) -->
+  <!-- Fallback message -->
   <div id="fallback-message">
     <span class="fallback-icon">📱</span>
     <span class="fallback-text">WebXR AR requires Safari on iOS.<br>Running in simulation mode — raise your hand for data overlay.</span>
   </div>
 
-  <!-- QR hint per debug -->
-  <div id="qr-hint">
-    📱 Scan QR on the ground to enter AR tunnel
+  <!-- ============================================ -->
+  <!-- SANDRO: BOTTONE START SULLO SCHERMO           -->
+  <!-- ============================================ -->
+  <div id="start-screen">
+    <div class="start-logo">ONDULKART</div>
+    <div class="start-subtitle">AR Tunnel Experience</div>
+    <button id="start-btn" class="start-button">
+      <span class="start-btn-text">START</span>
+      <span class="start-btn-ring"></span>
+    </button>
+    <div class="start-hint">Tocca per avviare l'esperienza AR</div>
   </div>
 
-  <!-- ============================================ -->
-  <!-- SCRIPTS                                       -->
-  <!-- ============================================ -->
-
-  <!-- App controller — ES module (importa tutti i moduli) -->
+  <!-- SCRIPTS -->
   <script type="module" src="js/app.js"></script>
 
 </body>
