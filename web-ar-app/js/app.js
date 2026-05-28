@@ -7,16 +7,12 @@ import { SVGOverlay } from './sandrx/svgOverlay.js';
 /**
  * WEB AR APP — Controller principale
  *
- * Colla i moduli di Marco (scena 3D, tunnel, farfalle)
- * con quelli di Sandro (hand tracking, SVG overlay, UI dati).
- *
  * Flusso:
- *   1. Inizializza scena Three.js (Marco)
- *   2. Inizializza sistema farfalle (Marco)
- *   3. Inizializza hand tracking (Sandro)
- *   4. Inizializza overlay SVG (Sandro)
- *   5. Collega callback mano ↔ overlay
- *   6. Avvia render loop
+ *   FASE 0: Schermata orientamento ("metti il telefono dritto")
+ *   FASE 1: Mostra bottone START 3D sul pavimento
+ *   FASE 2: Tap su START → avvia AR (WebXR) o fallback desktop
+ *   FASE 3: Inizializza farfalle, hand tracking, overlay SVG
+ *   FASE 4: Render loop
  */
 
 /* ============================================================
@@ -34,60 +30,50 @@ class ARApp {
     this.svgOverlay  = null;
 
     /* --- Stato --- */
-    this._initialized = false;
+    this._initialized      = false;
+    this._orientationReady = false;
+    this._startButtonShown = false;
+    this._arStarted        = false;
+
+    /* --- Elementi DOM orientamento --- */
+    this._orientGuide    = document.getElementById('orientation-guide');
+    this._orientPhone    = document.getElementById('orient-phone');
+    this._orientBar      = document.getElementById('orient-bar');
+    this._orientReady    = document.getElementById('orient-ready');
+    this._orientText     = document.getElementById('orient-instruction');
   }
 
   /* ----------------------------------------------------------
-   *  Inizializzazione completa
+   *  BOOT — Avvia il flusso dall'inizio
    * ---------------------------------------------------------- */
   async init() {
     console.log('═══ AR Tunnel Experience ═══');
     console.log('[App] Inizializzazione…');
 
     try {
-      /* ── FASE 1: Marco — Scena 3D ── */
+      /* ── FASE -1: Prepara subito la scena 3D (camera, tunnel) ── */
       console.log('[App] [Marco] Creazione scena Three.js…');
       this.tunnelScene = new TunnelScene();
-      await this.tunnelScene.initAR();
 
-      /* ── FASE 2: Marco — Farfalle ── */
-      console.log('[App] [Marco] Creazione sistema farfalle…');
-      this.butterflySystem = new ButterflySystem(this.tunnelScene.scene);
+      // Avvia subito il render loop per mostrare il tunnel animato
+      // durante orientamento e attesa tap su START.
+      // Il loading screen rimane visibile (z-index 100 > z-index scena).
+      this._startRenderLoop();
 
-      /* ── FASE 3: Sandro — Hand Tracking ── */
-      console.log('[App] [Sandro] Inizializzazione hand tracking…');
-      this.handTracker = new HandTracker();
+      /* ── FASE 0: Attendi orientamento corretto ── */
+      console.log('[App] [Sandro] Attesa orientamento dispositivo…');
+      await this._waitForOrientation();
 
-      // Collega callback Sandro ↔ Overlay
-      this.handTracker.onHandDetected = (data) => {
-        this._onHandDetected(data);
-      };
-      this.handTracker.onHandLost = () => {
-        this._onHandLost();
-      };
+      /* ── FASE 1: Mostra bottone START 3D sul pavimento ── */
+      console.log('[App] [Marco] Mostra bottone START…');
+      this._showStartButton();
 
-      await this.handTracker.init();
+      /* ── FASE 2: Bottone START → avvia AR ── */
+      // Il tap sul bottone viene gestito da _setupStartButtonListener()
+      // che chiama _onStartTapped()
 
-      /* ── FASE 4: Sandro — SVG Overlay ── */
-      console.log('[App] [Sandro] Creazione overlay SVG…');
-      const overlayEl = document.getElementById('svg-overlay');
-      this.svgOverlay = new SVGOverlay(overlayEl);
-
-      /* ── FASE 5: Avvia render loop (Marco) ── */
-      console.log('[App] [Marco] Avvio render loop…');
-      this.tunnelScene.start((delta, timestamp) => {
-        // Aggiorna farfalle (Marco)
-        if (this.butterflySystem) {
-          this.butterflySystem.update(delta, timestamp);
-        }
-      });
-
-      /* ── FASE 6: UI ── */
-      this._hideLoadingScreen();
-      this._setupUserGesture();
-
-      this._initialized = true;
-      console.log('[App] ✓ Inizializzazione completata');
+      // NOTA: il resto dell'inizializzazione (farfalle, hand tracking, render loop)
+      // avviene DOPO il tap su START in _onStartTapped()
 
     } catch (err) {
       console.error('[App] Errore inizializzazione:', err);
@@ -95,69 +81,275 @@ class ARApp {
     }
   }
 
+  /* ============================================================
+     FASE 0 — SANDRO: Orientamento telefono
+     ============================================================ */
+
   /* ----------------------------------------------------------
-   *  SANDRO: Callback — mano rilevata
+   *  SANDRO: Ascolta DeviceOrientation finché il telefono
+   *  non è "dritto" (beta tra 70° e 110°).
    *
-   *  Chiamata quando MediaPipe rileva una mano aperta.
-   *  Mostra l'SVG overlay alla posizione del palmo.
-   *
-   *  @param {Object} data — { x, y, handedness, landmarks }
+   *  Aggiorna la barra di progresso e l'icona telefono.
+   *  Quando stabile per 1.5s → resolve la Promise.
    * ---------------------------------------------------------- */
+  _waitForOrientation() {
+    return new Promise((resolve) => {
+      // Su desktop (nessun deviceorientation) → salta dopo 1.5s
+      let hasDeviceOrientation = false;
+      let stableTimer = null;
+      let lastBeta = null;
+
+      const BETA_MIN = 45;
+      const BETA_MAX = 135;
+      const STABLE_MS = 1500;
+
+      const checkOrientation = (event) => {
+        const beta = event.beta; // -180 … 180. 0=piatto, 90=dritto
+        if (beta === null) return;
+
+        hasDeviceOrientation = true;
+
+        // Calcolo qualità orientamento (0 → 100)
+        let quality;
+        if (beta >= BETA_MIN && beta <= BETA_MAX) {
+          // Zona corretta: map da angolo a 70-100%
+          const center = 90;
+          const dist = Math.abs(beta - center);
+          quality = 100 - (dist / (BETA_MAX - center)) * 30; // 70–100%
+
+          // Colora il telefono di verde
+          this._orientPhone.classList.add('correct');
+        } else {
+          // Fuori zona: 0–30%
+          const nearest = beta < BETA_MIN ? BETA_MIN : BETA_MAX;
+          const dist = Math.abs(beta - nearest);
+          quality = Math.max(0, 30 - dist);
+          this._orientPhone.classList.remove('correct');
+        }
+
+        // Aggiorna barra
+        this._orientBar.style.width = `${quality}%`;
+
+        // Controlla stabilità
+        if (beta >= BETA_MIN && beta <= BETA_MAX) {
+          if (lastBeta !== null && Math.abs(beta - lastBeta) < 3) {
+            // Beta stabile nella zona corretta
+            if (!stableTimer) {
+              stableTimer = setTimeout(() => {
+                console.log('[App] [Sandro] Orientamento corretto confermato');
+                window.removeEventListener('deviceorientation', checkOrientation);
+                this._onOrientationReady();
+                resolve();
+              }, STABLE_MS);
+            }
+          } else {
+            // Beta nella zona ma non stabile → reset timer
+            if (stableTimer) {
+              clearTimeout(stableTimer);
+              stableTimer = null;
+            }
+          }
+        } else {
+          // Fuori zona → reset timer
+          if (stableTimer) {
+            clearTimeout(stableTimer);
+            stableTimer = null;
+          }
+        }
+
+        lastBeta = beta;
+      };
+
+      window.addEventListener('deviceorientation', checkOrientation);
+
+      // Fallback desktop: se dopo 2s niente evento, salta
+      setTimeout(() => {
+        if (!hasDeviceOrientation) {
+          console.log('[App] [Sandro] DeviceOrientation non disponibile, salta orientamento');
+          window.removeEventListener('deviceorientation', checkOrientation);
+          this._onOrientationReady();
+          resolve();
+        }
+      }, 2000);
+    });
+  }
+
+  /* ----------------------------------------------------------
+   *  SANDRO: Orientamento corretto → aggiorna UI
+   * ---------------------------------------------------------- */
+  _onOrientationReady() {
+    this._orientationReady = true;
+
+    // Mostra "completato"
+    this._orientReady.classList.add('visible');
+    this._orientText.innerHTML = 'Orientamento <span class="correct-label">corretto</span>';
+
+    // Dopo 1s mostra il bottone START
+    setTimeout(() => {
+      this._orientGuide.classList.add('fade-out');
+      setTimeout(() => {
+        this._orientGuide.style.display = 'none';
+      }, 400);
+    }, 1000);
+  }
+
+  /* ============================================================
+     FASE 1 — MARCO: Bottone START 3D
+     ============================================================ */
+
+  /* ----------------------------------------------------------
+   *  MARCO: Crea e mostra il bottone START sul pavimento
+   * ---------------------------------------------------------- */
+  _showStartButton() {
+    this.tunnelScene.createStartButton();
+    this._startButtonShown = true;
+
+    // Listener per il tap sul bottone
+    this._setupStartButtonListener();
+  }
+
+  /* ----------------------------------------------------------
+   *  MARCO: Listener tap sul bottone START (raycaster 3D)
+   * ---------------------------------------------------------- */
+  _setupStartButtonListener() {
+    const onTap = async (e) => {
+      // Coordinate del tap
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+      if (clientX === undefined || clientY === undefined) return;
+
+      if (this.tunnelScene.hitTestStartButton(clientX, clientY)) {
+        console.log('[App] [Marco] Bottone START premuto!');
+        // Rimuovi listener
+        document.removeEventListener('click', onTap);
+        document.removeEventListener('touchstart', onTap);
+
+        // Rimuovi bottone e avvia AR
+        this.tunnelScene.removeStartButton();
+        await this._onStartTapped();
+      }
+    };
+
+    document.addEventListener('click', onTap);
+    document.addEventListener('touchstart', onTap);
+  }
+
+  /* ============================================================
+     FASE 2 → 3: Dopo tap su START
+     ============================================================ */
+
+  /* ----------------------------------------------------------
+   *  Avvia il resto dell'app dopo il tap su START
+   * ---------------------------------------------------------- */
+  async _onStartTapped() {
+    this._arStarted = true;
+
+    try {
+      /* ── FASE 2a: Avvia sessione AR (o fallback) ── */
+      console.log('[App] Avvio sessione AR…');
+      await this.tunnelScene.initAR();
+      // initAR() su Chrome desktop va in fallback automaticamente
+      // Su Safari iOS, aspetta user gesture → sessionstart
+
+      /* ── FASE 3a: Farfalle ── */
+      console.log('[App] [Marco] Creazione sistema farfalle…');
+      this.butterflySystem = new ButterflySystem(this.tunnelScene.scene);
+
+      /* ── FASE 3b: Hand Tracking ── */
+      console.log('[App] [Sandro] Inizializzazione hand tracking…');
+      this.handTracker = new HandTracker();
+      this.handTracker.onHandDetected = (data) => this._onHandDetected(data);
+      this.handTracker.onHandLost    = ()    => this._onHandLost();
+      await this.handTracker.init();
+
+      /* ── FASE 3c: SVG Overlay ── */
+      console.log('[App] [Sandro] Creazione overlay SVG…');
+      const overlayEl = document.getElementById('svg-overlay');
+      this.svgOverlay = new SVGOverlay(overlayEl);
+
+      /* ── FASE 4: Nascondi loading (render loop già attivo da _startRenderLoop) ── */
+      this._hideLoadingScreen();
+
+      // Gestore resize su finestra
+      this._setupUserGestureForAR();
+
+      this._initialized = true;
+      console.log('[App] ✓ Inizializzazione completata');
+
+    } catch (err) {
+      console.error('[App] Errore post-START:', err);
+      this._showError(err.message);
+    }
+  }
+
+  /* ----------------------------------------------------------
+   *  MARCO: Render loop — avviato subito, gira per tutta la durata
+   *
+   *  Anima il tunnel, il bottone START (se presente),
+   *  e le farfalle (se inizializzate).
+   * ---------------------------------------------------------- */
+  _startRenderLoop() {
+    this.tunnelScene.start((delta, timestamp) => {
+      // Bottone START (fase 1: prima del tap)
+      if (this.tunnelScene.startButton) {
+        this.tunnelScene.updateStartButton(delta);
+      }
+
+      // Farfalle (fase 3: dopo tap su START)
+      if (this.butterflySystem) {
+        this.butterflySystem.update(delta, timestamp);
+      }
+    });
+  }
+
+  /* ----------------------------------------------------------
+   *  MARCO: Su Safari iOS, il tap serve anche per avviare WebXR
+   *  Questo gestore rimane attivo dopo START per forzare
+   *  la sessione AR su click/touch (user gesture richiesto)
+   * ---------------------------------------------------------- */
+  _setupUserGestureForAR() {
+    const startAR = async () => {
+      if (this.tunnelScene && !this.tunnelScene.isAR) {
+        await this.tunnelScene.startARSession();
+      }
+      document.removeEventListener('click', startAR);
+      document.removeEventListener('touchstart', startAR);
+    };
+    document.addEventListener('click', startAR);
+    document.addEventListener('touchstart', startAR);
+  }
+
+  /* ============================================================
+     SANDRO: Callbacks Hand Tracking
+     ============================================================ */
+
   _onHandDetected(data) {
-    // Aggiorna indicatore UI
     const dot = document.getElementById('hand-dot');
     const text = document.getElementById('hand-status-text');
     if (dot) dot.classList.add('active');
     if (text) text.textContent = `${data.handedness} hand ✓`;
 
-    // Mostra overlay SVG alla posizione della mano
     if (this.svgOverlay) {
       this.svgOverlay.showAtPosition(data.x, data.y);
     }
   }
 
-  /* ----------------------------------------------------------
-   *  SANDRO: Callback — mano persa
-   *
-   *  Chiamata quando la mano esce dall'inquadratura.
-   *  Nasconde immediatamente l'overlay.
-   * ---------------------------------------------------------- */
   _onHandLost() {
-    // Aggiorna indicatore UI
     const dot = document.getElementById('hand-dot');
     const text = document.getElementById('hand-status-text');
     if (dot) dot.classList.remove('active');
     if (text) text.textContent = 'No hand';
 
-    // Nasconde overlay
     if (this.svgOverlay) {
       this.svgOverlay.hide();
     }
   }
 
-  /* ----------------------------------------------------------
-   *  MARCO: Gestione user gesture per avvio AR
-   *
-   *  WebXR richiede un user gesture per avviare la sessione.
-   *  Aggiungiamo un tap/click listener globale.
-   * ---------------------------------------------------------- */
-  _setupUserGesture() {
-    const startAR = async () => {
-      if (this.tunnelScene && !this.tunnelScene.isAR) {
-        await this.tunnelScene.startARSession();
-      }
-      // Rimuovi il listener dopo il primo gesture
-      document.removeEventListener('click', startAR);
-      document.removeEventListener('touchstart', startAR);
-    };
+  /* ============================================================
+     UI: Utilità
+     ============================================================ */
 
-    document.addEventListener('click', startAR);
-    document.addEventListener('touchstart', startAR);
-  }
-
-  /* ----------------------------------------------------------
-   *  UI: Nasconde schermata di caricamento
-   * ---------------------------------------------------------- */
   _hideLoadingScreen() {
     const loader = document.getElementById('loading-screen');
     if (loader) {
@@ -168,9 +360,6 @@ class ARApp {
     }
   }
 
-  /* ----------------------------------------------------------
-   *  UI: Mostra errore
-   * ---------------------------------------------------------- */
   _showError(message) {
     const loader = document.getElementById('loading-screen');
     if (loader) {
@@ -197,7 +386,5 @@ class ARApp {
 document.addEventListener('DOMContentLoaded', () => {
   const app = new ARApp();
   app.init();
-
-  // Esponi per debug in console
   window.__arApp = app;
 });

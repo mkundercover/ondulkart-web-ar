@@ -338,3 +338,113 @@ html, body {
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* ============================================
+   SANDRO: ORIENTATION GUIDE (prima di START)
+   ============================================ */
+
+#orientation-guide {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  backdrop-filter: blur(12px);
+  transition: opacity 0.4s ease-out;
+}
+
+#orientation-guide.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Icona telefono animata */
+.orient-phone-icon {
+  font-size: 80px;
+  animation: phone-tilt 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(254, 80, 0, 0.4));
+  transition: filter 0.3s, transform 0.3s;
+}
+
+.orient-phone-icon.correct {
+  filter: drop-shadow(0 0 30px rgba(0, 255, 136, 0.8));
+  animation: none;
+  transform: rotate(0deg);
+}
+
+@keyframes phone-tilt {
+  0%, 100% { transform: rotate(-15deg); }
+  50%      { transform: rotate(15deg); }
+}
+
+/* Testo orientamento */
+.orient-text {
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0 32px;
+  line-height: 1.8;
+}
+
+.orient-text .highlight {
+  color: #fe5000;
+  font-weight: bold;
+}
+
+.orient-text .correct-label {
+  color: #00ff88;
+}
+
+/* Barra di progresso orientamento */
+.orient-bar-container {
+  width: 200px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.orient-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #fe5000, #00ff88);
+  border-radius: 2px;
+  transition: width 0.15s ease-out;
+}
+
+/* Stato: pronto */
+.orient-ready {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.orient-ready.visible {
+  display: flex;
+}
+
+.orient-ready-text {
+  color: #00ff88;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+  animation: ready-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ready-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}

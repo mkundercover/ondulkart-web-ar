@@ -58,6 +58,10 @@ class TunnelScene {
     /* --- Tunnel --- */
     this.createWireframeTunnel();
 
+    /* --- Bottone START (visibile dopo orientamento corretto) --- */
+    this.startButton = null; // { mesh, textMesh, glowMesh }
+    this._pointer = new THREE.Vector2();
+
     /* --- Stato --- */
     this.isAR = false;
     this.fallbackX = 15;  // posizione X simulata nel fallback
@@ -332,6 +336,162 @@ class TunnelScene {
         this._enterFallbackMode();
       }
     }
+  }
+
+  /* ----------------------------------------------------------
+   *  MARCO: Crea il bottone START 3D sul pavimento
+   *
+   *  Un cerchio arancione glowing con testo "START" al centro,
+   *  posizionato sul pavimento a z = -2 m (davanti all'utente).
+   *
+   *  @returns {Object} { group, mesh, glowMesh, textMesh }
+   * ---------------------------------------------------------- */
+  createStartButton() {
+    const group = new THREE.Group();
+
+    /* --- Cerchio di base (pavimento) --- */
+    const btnRadius = 0.45;
+    const btnGeo = new THREE.CircleGeometry(btnRadius, 64);
+    const btnMat = new THREE.MeshBasicMaterial({
+      color: 0xfe5000,
+      transparent: true,
+      opacity: 0.15,
+      side: THREE.DoubleSide,
+    });
+    const btnMesh = new THREE.Mesh(btnGeo, btnMat);
+    btnMesh.rotation.x = -Math.PI / 2;
+    group.add(btnMesh);
+
+    /* --- Bordo circolare luminoso --- */
+    const ringGeo = new THREE.RingGeometry(btnRadius - 0.03, btnRadius, 64);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xfe5000,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = -Math.PI / 2;
+    ringMesh.position.y = 0.005; // appena sopra il pavimento
+    group.add(ringMesh);
+
+    /* --- Glow esterno (cerchio pieno semi-trasparente) --- */
+    const glowGeo = new THREE.CircleGeometry(btnRadius * 1.3, 64);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0xfe5000,
+      transparent: true,
+      opacity: 0.06,
+      side: THREE.DoubleSide,
+    });
+    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+    glowMesh.rotation.x = -Math.PI / 2;
+    glowMesh.position.y = 0.001;
+    group.add(glowMesh);
+
+    /* --- Testo "START" con CanvasTexture --- */
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'transparent';
+    ctx.fillRect(0, 0, 512, 256);
+    ctx.font = 'bold 100px "Courier New", monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#fe5000';
+    ctx.shadowBlur = 30;
+    ctx.fillText('START', 256, 128);
+
+    const textTexture = new THREE.CanvasTexture(canvas);
+    textTexture.needsUpdate = true;
+    const textGeo = new THREE.PlaneGeometry(1.2, 0.6);
+    const textMat = new THREE.MeshBasicMaterial({
+      map: textTexture,
+      transparent: true,
+      depthWrite: false,
+    });
+    const textMesh = new THREE.Mesh(textGeo, textMat);
+    textMesh.rotation.x = -Math.PI / 2;
+    textMesh.position.y = 0.01;
+    group.add(textMesh);
+
+    /* --- Posizione: sul pavimento, davanti all'utente --- */
+    const W = 6.30;
+    group.position.set(0, 0, -2);     // z = -2 m (davanti)
+    group.rotation.x = -Math.PI / 2;  // piatto sul pavimento
+
+    this.scene.add(group);
+
+    /* --- Salva riferimenti + animazione pulsing --- */
+    this.startButton = {
+      group,
+      mesh: btnMesh,
+      glowMesh,
+      ringMesh,
+      textMesh,
+      baseOpacity: { glow: 0.06, ring: 0.9, btn: 0.15 },
+    };
+
+    console.log('[Marco] Bottone START creato a z=-2m');
+    return this.startButton;
+  }
+
+  /* ----------------------------------------------------------
+   *  MARCO: Anima il pulsante START (pulsing)
+   *
+   *  @param {number} delta — tempo dal frame precedente
+   * ---------------------------------------------------------- */
+  updateStartButton(delta) {
+    if (!this.startButton) return;
+    const t = performance.now() * 0.001;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 3); // 0 … 1, ~3 Hz
+
+    // Glow pulsing
+    this.startButton.glowMesh.material.opacity =
+      0.04 + pulse * 0.08;
+
+    // Ring pulsing (alpha)
+    this.startButton.ringMesh.material.opacity =
+      0.6 + pulse * 0.4;
+
+    // Leggera scala sul testo
+    const scale = 0.95 + pulse * 0.1;
+    this.startButton.textMesh.scale.set(scale, scale, 1);
+  }
+
+  /* ----------------------------------------------------------
+   *  MARCO: Rimuove il bottone START dalla scena
+   * ---------------------------------------------------------- */
+  removeStartButton() {
+    if (this.startButton) {
+      this.scene.remove(this.startButton.group);
+      this.startButton = null;
+    }
+  }
+
+  /* ----------------------------------------------------------
+   *  MARCO: Raycast sul bottone START per detect tap
+   *
+   *  @param {number} clientX — coordinate tap X
+   *  @param {number} clientY — coordinate tap Y
+   *  @returns {boolean} true se il tap colpisce il bottone
+   * ---------------------------------------------------------- */
+  hitTestStartButton(clientX, clientY) {
+    if (!this.startButton) return false;
+
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this._pointer.x = (clientX / w) * 2 - 1;
+    this._pointer.y = -(clientY / h) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(this._pointer, this.camera);
+
+    const intersects = raycaster.intersectObject(
+      this.startButton.group, true
+    );
+    return intersects.length > 0;
   }
 }
 
