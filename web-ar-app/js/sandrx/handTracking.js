@@ -3,7 +3,7 @@
  * handTracking.js
  *
  * Sandro si occupa di:
- * - Tracciamento mano via MediaPipe Hands (da CDN)
+ * - Tracciamento mano via MediaPipe Hands (da CDN come ES module)
  * - Riconoscimento mano aperta/chiusa
  * - Coordinate normalizzate del palmo per overlay SVG
  * - Callback per eventi hand-detected / hand-lost
@@ -11,6 +11,14 @@
  * Usa la fotocamera POSTERIORE (environment) per AR,
  * con fallback sulla fotocamera frontale (user).
  */
+
+/* ── Import ES module da CDN ──
+   @mediapipe/tasks-vision è puro ESM, quindi lo importiamo
+   direttamente come modulo dal CDN (skip jsdelivr/nosniff issues). */
+import {
+  FilesetResolver,
+  HandLandmarker,
+} from 'https://esm.run/@mediapipe/tasks-vision@0.10.18';
 
 /* ============================================================
    SANDRO: HandTracker — MediaPipe Hands integration
@@ -46,22 +54,14 @@ class HandTracker {
    * ---------------------------------------------------------- */
   async init() {
     try {
-      // 1. Accedi ai globals esposti dal bundle UMD di MediaPipe
-      const { FilesetResolver, HandsLandmarker } = window;
-      if (!FilesetResolver || !HandsLandmarker) {
-        throw new Error(
-          'MediaPipe vision_bundle non caricato. Verifica che lo script CDN sia accessibile.'
-        );
-      }
-
-      // 2. Carica il resolver e il modello HandsLandmarker
+      // 1. Carica il resolver e il modello HandLandmarker
       const vision = await FilesetResolver.forVisionTasks(
-        'https://unpkg.com/@mediapipe/tasks-vision@0.10.1/wasm'
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
       );
 
       // Prova GPU prima, poi fallback a CPU
       try {
-        this._handLandmarker = await HandsLandmarker.createFromOptions(vision, {
+        this._handLandmarker = await HandLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath:
               'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
@@ -75,7 +75,7 @@ class HandTracker {
         });
       } catch (gpuErr) {
         console.warn('[Sandro] GPU delegate fallito, provo CPU:', gpuErr);
-        this._handLandmarker = await HandsLandmarker.createFromOptions(vision, {
+        this._handLandmarker = await HandLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath:
               'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
@@ -89,7 +89,7 @@ class HandTracker {
         });
       }
 
-      console.log('[Sandro] HandsLandmarker caricato');
+      console.log('[Sandro] HandLandmarker caricato');
 
       // 2. Crea elemento video
       this.videoElement = document.createElement('video');
@@ -260,3 +260,5 @@ class HandTracker {
     }
   }
 }
+
+export { HandTracker };

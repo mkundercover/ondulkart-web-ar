@@ -46,19 +46,15 @@
   <!-- Three.js (Marco) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <!-- MediaPipe Vision Tasks (Sandro) — unpkg con MIME type corretto per script classico -->
-  <script src="https://unpkg.com/@mediapipe/tasks-vision@0.10.1/vision_bundle.js"></script>
-
   <!-- Marco's modules -->
   <script src="js/marco/scene.js"></script>
   <script src="js/marco/butterflies.js"></script>
 
   <!-- Sandro's modules -->
-  <script src="js/sandrx/handTracking.js"></script>
   <script src="js/sandrx/svgOverlay.js"></script>
 
-  <!-- App controller (collega Marco ↔ Sandro) -->
-  <script src="js/app.js"></script>
+  <!-- App controller (collega Marco ↔ Sandro) — ES module per importare MediaPipe -->
+  <script type="module" src="js/app.js"></script>
 
 </body>
 </html>

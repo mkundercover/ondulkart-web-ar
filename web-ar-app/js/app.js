@@ -1,3 +1,6 @@
+/* ── Import ES module: HandTracker (MediaPipe wrapper) ── */
+import { HandTracker } from './sandrx/handTracking.js';
+
 /**
  * WEB AR APP — Controller principale
  *
