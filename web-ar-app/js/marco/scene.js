@@ -157,29 +157,68 @@ class TunnelScene {
   }
 
   /* ----------------------------------------------------------
-   *  Avvio AR (chiamato dal tap START = user gesture)
+   *  Avvio AR con hit-test per ancorare il tunnel al pavimento.
+   *
+   *  Il tunnel è posizionato in (0,0,0) nello spazio locale.
+   *  Quando l'hit-test trova il pavimento, sposta tutta la scena
+   *  in modo che il tunnel appaia "attaccato" al pavimento reale.
    * ---------------------------------------------------------- */
   async startARSession() {
     if (!navigator.xr) return false;
 
     try {
       const session = await navigator.xr.requestSession('immersive-ar', {
-        optionalFeatures: ['dom-overlay', 'hit-test'],
+        requiredFeatures: ['hit-test', 'local-floor'],
+        optionalFeatures: ['dom-overlay', 'anchors'],
         domOverlay: { root: document.body },
       });
 
       session.addEventListener('end', () => {
         this.isAR = false;
+        this._session = null;
+        this._hitTestSource = null;
         console.log('[Marco] Sessione AR terminata');
       });
+
+      this._session = session;
+      this._hitTestSource = null;
+      this._floorDetected = false;
+      this._floorY = 0;
+
+      // Crea il viewer reference space e l'hit-test source
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      this._hitTestSource = await session.requestHitTestSource({
+        space: viewerSpace,
+      });
+      console.log('[Marco] Hit-test source creato');
+
+      // Reference space locale con pavimento
+      this._localFloorSpace = await session.requestReferenceSpace('local-floor');
 
       await this.renderer.xr.setSession(session);
       this.isAR = true;
       console.log('[Marco] ✓ Sessione AR attiva!');
       return true;
     } catch (e) {
-      console.warn('[Marco] WebXR non disponibile:', e);
-      return false;
+      console.warn('[Marco] WebXR hit-test non supportato:', e);
+
+      // Fallback: AR senza hit-test (camera pass-through)
+      try {
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          optionalFeatures: ['dom-overlay'],
+          domOverlay: { root: document.body },
+        });
+        this._session = session;
+        this._localFloorSpace = await session.requestReferenceSpace('local-floor');
+        await this.renderer.xr.setSession(session);
+        this.isAR = true;
+        this._floorDetected = true; // posiziona subito
+        console.log('[Marco] ✓ Sessione AR attiva (no hit-test)');
+        return true;
+      } catch (e2) {
+        console.warn('[Marco] WebXR non disponibile:', e2);
+        return false;
+      }
     }
   }
 
@@ -191,11 +230,29 @@ class TunnelScene {
       const delta = this.clock.getDelta();
 
       if (this.isAR && frame) {
-        // WebXR gestisce tutto — camera, proiezione, anchoring
+        // === AR: hit-test per ancorare al pavimento reale ===
+        const session = this._session;
+        if (session && this._hitTestSource && !this._floorDetected) {
+          const hitResults = frame.getHitTestResults(this._hitTestSource);
+          if (hitResults.length > 0) {
+            const hit = hitResults[0];
+            const pose = hit.getPose(this._localFloorSpace);
+            if (pose) {
+              const y = pose.transform.position.y;
+              if (y < -0.3 && y > -3) {
+                // Pavimento trovato! Sposta la scena
+                this._floorY = y;
+                this._floorDetected = true;
+                // Posiziona la scena con il pavimento all'altezza corretta
+                this.scene.position.y = -y;
+                console.log(`[Marco] Pavimento rilevato a y=${y.toFixed(2)}m — tunnel ancorato!`);
+              }
+            }
+          }
+        }
       } else if (!this.isAR) {
-        // Desktop/mobile fallback: applica orientamento
+        // === Desktop/mobile fallback ===
         if (!this._hasDeviceOrientation) {
-          // Leggera animazione idle
           const t = timestamp * 0.0003;
           this._euler.y = Math.sin(t) * 0.3;
         }
