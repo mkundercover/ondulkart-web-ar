@@ -247,7 +247,6 @@ class SVGOverlay {
     this.wrapper.style.top  = `${clampedY}px`;
 
     // Animazione di entrata
-    this.wrapper.classList.remove('hidden');
     this.wrapper.classList.add('visible');
     this.isVisible = true;
   }
@@ -259,7 +258,6 @@ class SVGOverlay {
     if (!this.isVisible) return;
 
     this.wrapper.classList.remove('visible');
-    this.wrapper.classList.add('hidden');
     this.isVisible = false;
   }
 

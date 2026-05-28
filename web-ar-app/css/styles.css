@@ -1,460 +1,134 @@
-/**
- * WEB AR APP — Global Styles
- *
- * Marco: layout AR, posizionamento canvas e overlay
- * Sandro: animazioni motion graphics SVG
- */
-
 /* ============================================
    RESET & BASE
    ============================================ */
-*,
-*::before,
-*::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Courier New',monospace; }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #000;
-  font-family: 'Courier New', Courier, monospace;
-  -webkit-font-smoothing: antialiased;
+/* ============================================
+   SANDRO: VIDEO SFONDO (camera reale)
+   ============================================ */
+#camera-feed {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  object-fit:cover; z-index:0;
+  /* Specchia la camera frontale per naturaleità */
+  /* La posteriore NON va specchiata */
 }
 
 /* ============================================
-   MARCO: AR CONTAINER & THREE.JS CANVAS
+   MARCO: AR CONTAINER (Three.js trasparente)
    ============================================ */
-
 #ar-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  z-index:1; /* Sopra il video */
 }
-
 #ar-container canvas {
-  display: block;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  /* Il renderer Three.js ha alpha=true, quindi il video AR
-     si vedrà "attraverso" le parti trasparenti del canvas */
+  display:block; position:fixed; top:0; left:0;
+  width:100%; height:100%; z-index:1;
 }
 
 /* ============================================
-   SANDRO: SVG OVERLAY (SOPRA il canvas 3D)
+   SANDRO: SVG OVERLAY (motion graphics sopra mano)
    ============================================ */
-
 #svg-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10;
-  pointer-events: none; /* I click passano attraverso */
-  overflow: hidden;
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  z-index:10; pointer-events:none; overflow:hidden;
 }
 
-/* Il wrapper dell'SVG motion graphics è centrato sulla mano */
 #motion-graphics-wrapper {
-  position: absolute;
-  width: 360px;
-  height: 360px;
-  /* top e left settati dinamicamente da Sandro */
-  transform: translate(-50%, -50%) scale(0);
-  opacity: 0;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-              opacity 0.25s ease-out;
-  filter: drop-shadow(0 0 20px rgba(0, 255, 136, 0.3));
+  position:absolute; width:300px; height:300px;
+  transform:translate(-50%,-50%) scale(0); opacity:0;
+  transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease-out;
+  filter:drop-shadow(0 0 20px rgba(0,255,136,0.3));
 }
-
 #motion-graphics-wrapper.visible {
-  transform: translate(-50%, -50%) scale(1);
-  opacity: 1;
-}
-
-#motion-graphics-wrapper.hidden {
-  transform: translate(-50%, -50%) scale(0);
-  opacity: 0;
-  transition: transform 0.2s ease-in, opacity 0.15s ease-in;
+  transform:translate(-50%,-50%) scale(1); opacity:1;
 }
 
 /* ============================================
-   SANDRO: ANIMATIONI MOTION GRAPHICS SVG
+   SANDRO: HAND STATUS
    ============================================ */
-
-/* Rotazione continua dell'anello esterno */
-.ring-outer {
-  transform-origin: center;
-  animation: ring-rotate-ccw 15s linear infinite;
-}
-
-/* Rotazione inversa dell'anello interno tratteggiato */
-.ring-inner {
-  transform-origin: center;
-  animation: ring-rotate-cw 8s linear infinite;
-}
-
-/* Dash offset dell'anello tratteggio */
-.ring-dashed {
-  transform-origin: center;
-  animation: dash-spin 4s linear infinite;
-}
-
-/* Pulse del cerchio centrale */
-.center-circle {
-  transform-origin: center;
-  animation: pulse-glow 2.5s ease-in-out infinite;
-}
-
-/* Glow sul testo del dato CO2 */
-.data-value {
-  animation: data-pulse 2s ease-in-out infinite;
-}
-
-/* Pulsante dei bracket angolari */
-.corner-bracket {
-  animation: bracket-pulse 3s ease-in-out infinite;
-}
-
-/* Particelle decorative nel SVG */
-.particle-dot {
-  animation: particle-float 3s ease-in-out infinite;
-}
-
-/* Keyframes */
-@keyframes ring-rotate-ccw {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-@keyframes ring-rotate-cw {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(-360deg); }
-}
-
-@keyframes dash-spin {
-  from { stroke-dashoffset: 0; }
-  to   { stroke-dashoffset: 60; }
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scale(1.04);
-    opacity: 1;
-  }
-}
-
-@keyframes data-pulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 3px rgba(0, 255, 136, 0.5));
-  }
-  50% {
-    filter: drop-shadow(0 0 12px rgba(0, 255, 136, 0.9));
-  }
-}
-
-@keyframes bracket-pulse {
-  0%, 100% { opacity: 0.5; }
-  50%      { opacity: 1; }
-}
-
-@keyframes particle-float {
-  0%, 100% { transform: translateY(0); opacity: 0.3; }
-  50%      { transform: translateY(-8px); opacity: 0.8; }
-}
-
-/* ============================================
-   MARCO: LOADING SCREEN
-   ============================================ */
-
-#loading-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  z-index: 100;
-  transition: opacity 0.5s ease-out;
-}
-
-#loading-screen.fade-out {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.loading-spinner {
-  width: 60px;
-  height: 60px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #fe5000;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 24px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.loading-text {
-  color: #fff;
-  font-size: 14px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  opacity: 0.8;
-}
-
-.loading-sub {
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 11px;
-  margin-top: 8px;
-  letter-spacing: 1px;
-}
-
-/* ============================================
-   MARCO: QR HINT (debug / fallback)
-   ============================================ */
-
-#qr-hint {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
-  letter-spacing: 1px;
-  padding: 8px 16px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 4px;
-  backdrop-filter: blur(4px);
-}
-
-/* ============================================
-   SANDRO: HAND STATUS INDICATOR
-   ============================================ */
-
 #hand-status {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 20px;
-  backdrop-filter: blur(4px);
-  transition: opacity 0.3s;
+  position:fixed; top:16px; right:16px; z-index:50;
+  display:flex; align-items:center; gap:8px;
+  padding:6px 12px; background:rgba(0,0,0,0.5);
+  border-radius:16px; backdrop-filter:blur(4px);
 }
-
 #hand-status .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ff3333;
-  transition: background 0.3s;
+  width:8px; height:8px; border-radius:50%; background:#ff3333;
 }
-
 #hand-status .status-dot.active {
-  background: #00ff88;
-  box-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+  background:#00ff88; box-shadow:0 0 8px rgba(0,255,136,0.5);
 }
-
 #hand-status .status-text {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:1px; text-transform:uppercase;
 }
 
 /* ============================================
-   FALLBACK MESSAGE (no WebXR)
+   SANDRO: START SCREEN
    ============================================ */
-
-#fallback-message {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  background: rgba(0, 0, 0, 0.75);
-  color: #fe5000;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  display: none;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(254, 80, 0, 0.3);
-  text-align: center;
-  max-width: 85vw;
-  line-height: 1.5;
-  animation: fadeInDown 0.5s ease-out;
-}
-
-#fallback-message.visible {
-  display: block;
-}
-
-.fallback-icon {
-  font-size: 16px;
-  display: block;
-  margin-bottom: 2px;
-}
-
-.fallback-text {
-  display: block;
-}
-
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-/* ============================================
-   SANDRO: START SCREEN (bottone sullo schermo)
-   ============================================ */
-
 #start-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 24px;
-  backdrop-filter: blur(8px);
-  transition: opacity 0.5s ease-out;
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  z-index:100; background:rgba(0,0,0,0.8);
+  display:flex; flex-direction:column; justify-content:center;
+  align-items:center; gap:20px; backdrop-filter:blur(8px);
+  transition:opacity 0.5s ease-out;
 }
-
-#start-screen.fade-out {
-  opacity: 0;
-  pointer-events: none;
-}
+#start-screen.fade-out { opacity:0; pointer-events:none; }
 
 .start-logo {
-  color: #fff;
-  font-family: 'Courier New', monospace;
-  font-size: 28px;
-  letter-spacing: 8px;
-  font-weight: bold;
-  text-shadow: 0 0 30px rgba(254, 80, 0, 0.5);
+  color:#fff; font-size:26px; letter-spacing:8px; font-weight:bold;
+  text-shadow:0 0 30px rgba(254,80,0,0.5);
 }
-
 .start-subtitle {
-  color: rgba(255, 255, 255, 0.4);
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  margin-bottom: 16px;
+  color:rgba(255,255,255,0.35); font-size:11px; letter-spacing:4px;
+  text-transform:uppercase; margin-bottom:12px;
 }
 
-/* Bottone START circolare */
 .start-button {
-  position: relative;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: transform 0.2s;
+  position:relative; width:130px; height:130px; border-radius:50%;
+  border:none; background:transparent; cursor:pointer; outline:none;
+  -webkit-tap-highlight-color:transparent;
+  display:flex; justify-content:center; align-items:center;
+  transition:transform 0.15s;
 }
-
-.start-button:active {
-  transform: scale(0.95);
-}
+.start-button:active { transform:scale(0.93); }
 
 .start-btn-text {
-  position: relative;
-  z-index: 2;
-  color: #fff;
-  font-family: 'Courier New', monospace;
-  font-size: 22px;
-  font-weight: bold;
-  letter-spacing: 4px;
-  text-shadow: 0 0 20px rgba(254, 80, 0, 0.8);
+  position:relative; z-index:2; color:#fff;
+  font-family:'Courier New',monospace; font-size:22px;
+  font-weight:bold; letter-spacing:4px;
+  text-shadow:0 0 20px rgba(254,80,0,0.8);
 }
 
-/* Anello animato attorno al bottone */
 .start-btn-ring {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  border: 2px solid rgba(254, 80, 0, 0.6);
-  animation: start-ring-pulse 2s ease-in-out infinite;
+  position:absolute; top:0; left:0; width:130px; height:130px;
+  border-radius:50%; border:2px solid rgba(254,80,0,0.6);
+  animation:start-ring-pulse 2s ease-in-out infinite;
 }
-
 .start-btn-ring::before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: -6px;
-  right: -6px;
-  bottom: -6px;
-  border-radius: 50%;
-  border: 1px solid rgba(254, 80, 0, 0.2);
-  animation: start-ring-pulse 2s ease-in-out 0.5s infinite;
+  content:''; position:absolute; top:-6px; left:-6px; right:-6px; bottom:-6px;
+  border-radius:50%; border:1px solid rgba(254,80,0,0.2);
+  animation:start-ring-pulse 2s ease-in-out 0.5s infinite;
 }
-
 @keyframes start-ring-pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 1;
-  }
+  0%,100% { transform:scale(1); opacity:0.5; }
+  50% { transform:scale(1.08); opacity:1; }
 }
 
 .start-hint {
-  color: rgba(255, 255, 255, 0.3);
-  font-family: 'Courier New', monospace;
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-top: 8px;
+  color:rgba(255,255,255,0.25); font-size:10px;
+  letter-spacing:2px; text-transform:uppercase; margin-top:4px;
 }
+
+/* ============================================
+   FALLBACK MESSAGE
+   ============================================ */
+#fallback-message {
+  position:fixed; top:12px; left:50%; transform:translateX(-50%);
+  z-index:50; background:rgba(0,0,0,0.7); color:#fe5000;
+  padding:8px 16px; border-radius:8px; font-size:11px;
+  letter-spacing:0.5px; display:none; backdrop-filter:blur(8px);
+  border:1px solid rgba(254,80,0,0.3); text-align:center; max-width:85vw;
+  line-height:1.5;
+}
+#fallback-message.visible { display:block; }

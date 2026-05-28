@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <meta name="apple-mobile-web-app-capable" yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>AR Tunnel Experience</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
 
-  <!-- MARCO: Three.js container -->
+  <!-- SANDRO: Video sfondo (camera reale) -->
+  <video id="camera-feed" autoplay playsinline muted></video>
+
+  <!-- MARCO: Three.js canvas (trasparente, sopra il video) -->
   <div id="ar-container"></div>
 
   <!-- SANDRO: Overlay SVG Motion Graphics -->
@@ -21,15 +24,7 @@
     <span class="status-text" id="hand-status-text">No hand</span>
   </div>
 
-  <!-- Fallback message -->
-  <div id="fallback-message">
-    <span class="fallback-icon">📱</span>
-    <span class="fallback-text">WebXR AR requires Safari on iOS.<br>Running in simulation mode — raise your hand for data overlay.</span>
-  </div>
-
-  <!-- ============================================ -->
-  <!-- SANDRO: BOTTONE START SULLO SCHERMO           -->
-  <!-- ============================================ -->
+  <!-- SANDRO: Bottone START sullo schermo -->
   <div id="start-screen">
     <div class="start-logo">ONDULKART</div>
     <div class="start-subtitle">AR Tunnel Experience</div>
@@ -37,7 +32,7 @@
       <span class="start-btn-text">START</span>
       <span class="start-btn-ring"></span>
     </button>
-    <div class="start-hint">Tocca per avviare l'esperienza AR</div>
+    <div class="start-hint">Tocca per avviare</div>
   </div>
 
   <!-- SCRIPTS -->
