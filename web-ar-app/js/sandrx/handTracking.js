@@ -46,23 +46,48 @@ class HandTracker {
    * ---------------------------------------------------------- */
   async init() {
     try {
-      // 1. Carica il resolver e il modello HandsLandmarker
+      // 1. Accedi ai globals esposti dal bundle UMD di MediaPipe
+      const { FilesetResolver, HandsLandmarker } = window;
+      if (!FilesetResolver || !HandsLandmarker) {
+        throw new Error(
+          'MediaPipe vision_bundle non caricato. Verifica che lo script CDN sia accessibile.'
+        );
+      }
+
+      // 2. Carica il resolver e il modello HandsLandmarker
       const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
       );
 
-      this._handLandmarker = await HandsLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-          delegate: 'GPU',
-        },
-        runningMode: 'VIDEO',
-        numHands: 2,
-        minHandDetectionConfidence: 0.5,
-        minHandPresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      });
+      // Prova GPU prima, poi fallback a CPU
+      try {
+        this._handLandmarker = await HandsLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            delegate: 'GPU',
+          },
+          runningMode: 'VIDEO',
+          numHands: 2,
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+      } catch (gpuErr) {
+        console.warn('[Sandro] GPU delegate fallito, provo CPU:', gpuErr);
+        this._handLandmarker = await HandsLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            delegate: 'CPU',
+          },
+          runningMode: 'VIDEO',
+          numHands: 2,
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+      }
 
       console.log('[Sandro] HandsLandmarker caricato');
 

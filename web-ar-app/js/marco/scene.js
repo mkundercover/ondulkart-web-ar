@@ -231,10 +231,19 @@ class TunnelScene {
       }
     }
 
-    // Fallback: visuale desktop con camera animata
-    console.log('[Marco] Fallback desktop — camera simulata');
-    document.getElementById('fallback-message').classList.add('visible');
-    this._enterFallbackMode();
+    // WebXR non disponibile — rimani in attesa che l'utente
+    // clicki per provare comunque (oppure fallback auto dopo 3s)
+    console.log('[Marco] WebXR AR non disponibile su questo browser');
+    this.isAR = false;
+
+    // Dopo 2 secondi mostra il fallback automaticamente
+    // (così non resta bloccato su loading)
+    setTimeout(() => {
+      if (!this.isAR && !this.renderer.xr.isPresenting) {
+        document.getElementById('fallback-message').classList.add('visible');
+        this._enterFallbackMode();
+      }
+    }, 2000);
   }
 
   /* ----------------------------------------------------------

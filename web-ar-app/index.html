@@ -30,7 +30,8 @@
 
   <!-- Fallback message (se WebXR non disponibile) -->
   <div id="fallback-message">
-    ⚠ WebXR AR not available — running in simulation mode
+    <span class="fallback-icon">📱</span>
+    <span class="fallback-text">WebXR AR requires Safari on iOS.<br>Running in simulation mode — raise your hand for data overlay.</span>
   </div>
 
   <!-- QR hint per debug -->
@@ -45,8 +46,8 @@
   <!-- Three.js (Marco) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <!-- MediaPipe Vision Tasks (Sandro) -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js"></script>
+  <!-- MediaPipe Vision Tasks (Sandro) — UMD bundle for global window.* access -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.min.js"></script>
 
   <!-- Marco's modules -->
   <script src="js/marco/scene.js"></script>
